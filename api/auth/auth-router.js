@@ -58,6 +58,46 @@
     "message": "Oturum bulunamadı!"
   }
  */
+  const router = require("express").Router();
+  const userModel = require("../users/users-model");
+  const mw = require("./auth-middleware");
+  const bcryptjs = require("bcryptjs");
 
- 
+  router.post("/register",mw.sifreGecerlimi,mw.usernameBostami,async(req,res,next)=>{
+    try {
+      let hashedPassword = bcryptjs.hashSync(req.body.password);
+      const insertedUser = await userModel.ekle({username:req.body.username,password:hashedPassword});
+      res.status(201).json(insertedUser);
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post("/login",mw.sifreGecerlimi,mw.usernameVarmi,(req,res,next)=>{
+    try {
+      req.session.user_id = req.dbUser.user_id;
+      res.status(200).json({message:`Hoş geldin ${req.dbUser.username}`});
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.get("/logout",(req,res,next)=>{
+    try {
+      if(req.session.user_id>0){
+        req.session.destroy(err=>{
+          if(err){
+            res.status(500).json({message:"session destroy edilirken hata oluştu"});
+          }else{
+            res.json({message:"Çıkış yapildi"});
+          }
+        });
+      }else{
+        res.status(200).json({message:"Oturum bulunamadı!"});
+      }
+     
+    } catch (error) {
+      next(error);
+    }
+  });
+
 // Diğer modüllerde kullanılabilmesi için routerı "exports" nesnesine eklemeyi unutmayın.
+module.exports = router;
